@@ -78,7 +78,17 @@ ui <- page_sidebar(
       choices  = c("None" = "none", num_vars),
       selected = "distance"
     ),
-    uiOutput("num2_slider")
+    uiOutput("num2_slider"),
+    
+    hr(),
+    
+    # nothing in the main panel updates until this gets clicked
+    actionButton(
+      inputId = "apply_filters",
+      label   = "Apply Filters",
+      class   = "btn-primary",
+      width   = "100%"
+    )
   ),
   
   # main panel tabs, About is first so it's the default tab
@@ -92,7 +102,8 @@ ui <- page_sidebar(
     
     nav_panel(
       title = "Data Download",
-      p("Data table and download button coming soon.")
+      # quick check that the filtering works, the table comes next commit
+      textOutput("n_rows")
     ),
     
     nav_panel(
@@ -121,7 +132,51 @@ server <- function(input, output, session) {
     make_range_slider("num2_range", input$num2_var)
   })
   
-  # the subsetting logic with the action button comes in the next commit
+  
+  # Subsetting -----------------------------------------------------------
+  # eventReactive() means this only reruns when Apply Filters is clicked,
+  # not every time a widget changes. ignoreNULL = FALSE lets it run once
+  # when the app first opens so the tabs aren't empty before any click.
+  # Every tab pulls from filtered_data() so they all stay in sync.
+  
+  filtered_data <- eventReactive(input$apply_filters, {
+    
+    df <- housing |>
+      dplyr::filter(type %in% input$type_filter)
+    
+    if (input$region_filter != "All") {
+      df <- df |>
+        dplyr::filter(region_group == input$region_filter)
+    }
+    
+    # numeric filters only apply if a variable is picked and its slider
+    # has loaded. Note this drops rows that are missing that variable.
+    if (input$num1_var != "none" && !is.null(input$num1_range)) {
+      df <- df |>
+        dplyr::filter(dplyr::between(.data[[input$num1_var]],
+                                     input$num1_range[1],
+                                     input$num1_range[2]))
+    }
+    
+    if (input$num2_var != "none" && !is.null(input$num2_range)) {
+      df <- df |>
+        dplyr::filter(dplyr::between(.data[[input$num2_var]],
+                                     input$num2_range[1],
+                                     input$num2_range[2]))
+    }
+    
+    df
+    
+  }, ignoreNULL = FALSE)
+  
+  
+  # Data Download tab ----------------------------------------------------
+  
+  output$n_rows <- renderText({
+    paste0(format(nrow(filtered_data()), big.mark = ","),
+           " of ", format(nrow(housing), big.mark = ","),
+           " sales match the current filters.")
+  })
   
 }
 
