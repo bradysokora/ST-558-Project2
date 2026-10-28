@@ -125,6 +125,8 @@ var_label <- function(var) {
 # level of a categorical variable. Both arguments are column names as
 # strings, which is exactly what shiny inputs give back, so the app can call
 # this directly without any extra tidy eval tricks.
+# If a group has no values at all, R gives back NaN or Inf (and a warning),
+# so I swap those for NA to keep the table clean.
 summarize_num_by <- function(df, num_var, group_var) {
   df |>
     dplyr::group_by(.data[[group_var]]) |>
@@ -133,8 +135,11 @@ summarize_num_by <- function(df, num_var, group_var) {
       mean   = mean(.data[[num_var]], na.rm = TRUE),
       median = median(.data[[num_var]], na.rm = TRUE),
       sd     = sd(.data[[num_var]], na.rm = TRUE),
-      min    = min(.data[[num_var]], na.rm = TRUE),
-      max    = max(.data[[num_var]], na.rm = TRUE),
+      min    = suppressWarnings(min(.data[[num_var]], na.rm = TRUE)),
+      max    = suppressWarnings(max(.data[[num_var]], na.rm = TRUE)),
       .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      dplyr::across(mean:max, ~ dplyr::if_else(is.finite(.x), .x, NA_real_))
     )
 }

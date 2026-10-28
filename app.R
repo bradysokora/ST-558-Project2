@@ -76,11 +76,16 @@ make_num_plot <- function(df, plot_type, num_var, group_var, scatter_x,
       dplyr::group_by(.data[[group_var]], .data[[heat_y]]) |>
       dplyr::summarize(med = median(.data[[num_var]], na.rm = TRUE),
                        .groups = "drop") |>
+      # cells with no values get a blank label instead of the text "NA"
+      dplyr::mutate(med_label = dplyr::if_else(
+        is.na(med), "", scales::comma(med, accuracy = 1)
+      )) |>
       ggplot(aes(x = .data[[group_var]], y = .data[[heat_y]], fill = med)) +
       geom_tile(color = "white") +
-      geom_text(aes(label = scales::comma(med, accuracy = 1)), size = 3.5) +
+      geom_text(aes(label = med_label), size = 3.5) +
       scale_fill_distiller(palette = "YlOrRd", direction = 1,
-                           labels = scales::label_comma()) +
+                           labels = scales::label_comma(),
+                           na.value = "grey90") +
       labs(
         title = paste("Median", num_lab, "by", var_label(group_var),
                       "and", var_label(heat_y)),
@@ -201,6 +206,12 @@ ui <- page_sidebar(
       choices  = levels(housing$type),
       selected = levels(housing$type)
     ),
+    # quick way to get every level back after unchecking some
+    actionLink(
+      inputId = "select_all_types",
+      label   = "Select all property types"
+    ),
+    br(), br(),
     
     # categorical filter 2: region group, with an explicit "All" option
     # (I collapsed the 8 regions down to Metro vs Regional in helpers.R)
@@ -322,6 +333,15 @@ ui <- page_sidebar(
     
     nav_panel(
       title = "Data Exploration",
+      
+      # short description so this tab explains itself like the others do
+      p("Explore the filtered data with tables and plots. Pick",
+        strong("Categorical Summaries"), "for counts, contingency tables, and",
+        "bar charts, or", strong("Numeric Summaries"), "for summary stats",
+        "across groups plus histograms, box plots, scatter plots, and a",
+        "heatmap. Use the controls on the left of each section to choose the",
+        "variables and how to color or facet the plots. Everything here",
+        "updates when you click Apply Filters in the sidebar."),
       
       # the big switch: categorical stuff or numeric stuff
       radioButtons(
@@ -476,6 +496,19 @@ ui <- page_sidebar(
 # Server -----------------------------------------------------------------
 
 server <- function(input, output, session) {
+  
+  # Select all link ------------------------------------------------------
+  # Re-checks every property type box. Like everything else in the sidebar,
+  # it doesn't change the data until Apply Filters is clicked.
+  
+  observeEvent(input$select_all_types, {
+    updateCheckboxGroupInput(
+      session  = session,
+      inputId  = "type_filter",
+      selected = levels(housing$type)
+    )
+  })
+  
   
   # Dynamic sliders ------------------------------------------------------
   # Each slider only shows up once a numeric variable is picked. The range
@@ -663,7 +696,7 @@ server <- function(input, output, session) {
       ) |>
       setNames(c(var_label(input$num_group),
                  "N", "Mean", "Median", "SD", "Min", "Max"))
-  }, striped = TRUE)
+  }, striped = TRUE, na = "none")
   
   # all the plot logic lives in make_num_plot() up top, this just checks
   # for problem combos first so the user gets a message, not an error
