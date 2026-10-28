@@ -9,6 +9,7 @@ library(shiny)
 library(bslib)
 library(tidyverse)
 library(DT)
+library(shinycssloaders)
 
 # cleaning function, variable lookups, and summary helpers
 source("helpers.R")
@@ -34,9 +35,27 @@ make_range_slider <- function(input_id, var) {
   )
 }
 
+# need_rows()
+# If the filters leave nothing behind, this shows a friendly message
+# instead of a red error. Only the plots and the data table use this, so
+# the message shows up once per section instead of twice.
+need_rows <- function(df) {
+  validate(need(
+    nrow(df) > 0,
+    paste("No sales match the current filters. Make sure at least one",
+          "Property Type is checked, loosen the sliders, and click Apply Filters again.")
+  ))
+}
+
+# spinner()
+# Wraps an output in a loading spinner. One spot to change the look.
+spinner <- function(ui_element) {
+  shinycssloaders::withSpinner(ui_element, type = 6, color = "#2c7fb8")
+}
+
 # make_num_plot()
 # Builds whichever numeric plot the user picked. Keeping this out of the
-# server so renderPlot() is one line and each plot type is easy to find.
+# server so renderPlot() is short and each plot type is easy to find.
 #   plot_type: "hist", "box", "scatter", or "heat"
 #   num_var:   the numeric variable being plotted
 #   group_var: categorical x axis for box plots and heatmaps
@@ -51,7 +70,7 @@ make_num_plot <- function(df, plot_type, num_var, group_var, scatter_x,
   num_lab <- var_label(num_var)
   
   # heatmap is its own thing since it summarizes first, so handle it and
-  # return early (color and facet don't apply here)
+  # return early (color, facet, and log scale don't apply here)
   if (plot_type == "heat") {
     p <- df |>
       dplyr::group_by(.data[[group_var]], .data[[heat_y]]) |>
@@ -73,6 +92,15 @@ make_num_plot <- function(df, plot_type, num_var, group_var, scatter_x,
       theme(axis.text.x = element_text(angle = 30, hjust = 1))
     
     return(p)
+  }
+  
+  # log scales can't handle 0 or negatives (land size has a bunch of 0s),
+  # so drop those rows and tell the user how many got left out
+  n_dropped <- 0
+  if (log_scale) {
+    bad_rows  <- !is.na(df[[num_var]]) & df[[num_var]] <= 0
+    n_dropped <- sum(bad_rows)
+    df        <- df[!bad_rows, ]
   }
   
   has_color <- color_var != "none"
@@ -132,6 +160,12 @@ make_num_plot <- function(df, plot_type, num_var, group_var, scatter_x,
       labs(title = paste(num_lab, "vs", var_label(scatter_x)),
            x = var_label(scatter_x),
            y = paste0(num_lab, log_note))
+  }
+  
+  # let the user know if the log scale left some sales out
+  if (n_dropped > 0) {
+    p <- p + labs(subtitle = paste(scales::comma(n_dropped),
+                                   "sales with a value of 0 were left out so the log scale works"))
   }
   
   # legend title, only matters if something is colored
@@ -283,7 +317,7 @@ ui <- page_sidebar(
       ),
       br(), br(),
       
-      DT::dataTableOutput("data_table")
+      spinner(DT::dataTableOutput("data_table"))
     ),
     
     nav_panel(
@@ -341,8 +375,8 @@ ui <- page_sidebar(
           # right: the table and the bar chart
           div(
             h5(textOutput("cat_table_title")),
-            tableOutput("cat_table"),
-            plotOutput("cat_bar", height = "450px")
+            div(style = "overflow-x: auto;", tableOutput("cat_table")),
+            spinner(plotOutput("cat_bar", height = "450px"))
           )
         )
       ),
@@ -429,8 +463,8 @@ ui <- page_sidebar(
           # right: the summary table and the plot
           div(
             h5(textOutput("num_table_title")),
-            tableOutput("num_table"),
-            plotOutput("num_plot", height = "500px")
+            div(style = "overflow-x: auto;", tableOutput("num_table")),
+            spinner(plotOutput("num_plot", height = "500px"))
           )
         )
       )
@@ -463,6 +497,8 @@ server <- function(input, output, session) {
   # not every time a widget changes. ignoreNULL = FALSE lets it run once
   # when the app first opens so the tabs aren't empty before any click.
   # Every tab pulls from filtered_data() so they all stay in sync.
+  # If no property types are checked this just returns 0 rows, and the
+  # outputs handle that with need_rows().
   
   filtered_data <- eventReactive(input$apply_filters, {
     
@@ -505,8 +541,11 @@ server <- function(input, output, session) {
   
   # the table, scrollX keeps it from blowing out the page width
   output$data_table <- DT::renderDataTable({
+    df <- filtered_data()
+    need_rows(df)
+    
     DT::datatable(
-      filtered_data(),
+      df,
       rownames = FALSE,
       options  = list(pageLength = 10, scrollX = TRUE)
     )
@@ -535,9 +574,12 @@ server <- function(input, output, session) {
     }
   })
   
-  # one-way table if no second variable, two-way table if there is one
+  # one-way table if no second variable, two-way table if there is one.
+  # req() hides the table quietly when something's off, and the bar chart
+  # below shows the actual message, so it only appears once
   output$cat_table <- renderTable({
     df <- filtered_data()
+    req(nrow(df) > 0, input$cat_fill != input$cat_x)
     
     if (input$cat_fill == "none") {
       tab <- as.data.frame(table(df[[input$cat_x]]))
@@ -554,6 +596,13 @@ server <- function(input, output, session) {
   # bar chart that adds color, bar style, and facets based on the controls
   output$cat_bar <- renderPlot({
     df <- filtered_data()
+    need_rows(df)
+    validate(
+      need(input$cat_fill != input$cat_x,
+           "Pick a Second Variable that's different from the Main Variable (or set it to None)."),
+      need(input$cat_facet != input$cat_x,
+           "Pick a Facet By variable that's different from the Main Variable (or set it to None).")
+    )
     
     p <- ggplot(df, aes(x = .data[[input$cat_x]]))
     
@@ -595,22 +644,54 @@ server <- function(input, output, session) {
           var_label(input$num_group))
   })
   
-  # uses summarize_num_by() from helpers.R, then formats the numbers with
-  # commas so prices are readable
+  # uses summarize_num_by() from helpers.R, then formats the numbers.
+  # big variables (like price) get whole numbers, small ones (like
+  # distance) keep one decimal so the table stays narrow but still useful.
+  # req() hides it quietly when there's nothing to show, the plot below
+  # handles the message
   output$num_table <- renderTable({
-    summarize_num_by(filtered_data(), input$num_var, input$num_group) |>
+    df <- filtered_data()
+    req(nrow(df) > 0, any(!is.na(df[[input$num_var]])))
+    
+    big_var  <- max(abs(df[[input$num_var]]), na.rm = TRUE) >= 1000
+    accuracy <- if (big_var) 1 else 0.1
+    
+    summarize_num_by(df, input$num_var, input$num_group) |>
       dplyr::mutate(
         n = scales::comma(n),
-        dplyr::across(mean:max, ~ scales::comma(.x, accuracy = 0.1))
+        dplyr::across(mean:max, ~ scales::comma(.x, accuracy = accuracy))
       ) |>
       setNames(c(var_label(input$num_group),
                  "N", "Mean", "Median", "SD", "Min", "Max"))
   }, striped = TRUE)
   
-  # all the plot logic lives in make_num_plot() up top
+  # all the plot logic lives in make_num_plot() up top, this just checks
+  # for problem combos first so the user gets a message, not an error
   output$num_plot <- renderPlot({
+    df <- filtered_data()
+    need_rows(df)
+    validate(need(
+      any(!is.na(df[[input$num_var]])),
+      paste("There are no", var_label(input$num_var),
+            "values left after filtering. Try a different variable or loosen the filters.")
+    ))
+    
+    if (input$plot_type == "scatter") {
+      validate(need(
+        input$scatter_x != input$num_var,
+        "Pick an X Axis Variable that's different from the Numeric Variable."
+      ))
+    }
+    
+    if (input$plot_type == "heat") {
+      validate(need(
+        input$heat_y != input$num_group,
+        "Pick a heatmap row variable that's different from Summarize Across."
+      ))
+    }
+    
     make_num_plot(
-      df        = filtered_data(),
+      df        = df,
       plot_type = input$plot_type,
       num_var   = input$num_var,
       group_var = input$num_group,
