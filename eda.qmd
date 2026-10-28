@@ -1,0 +1,122 @@
+---
+title: "Melbourne Housing: Static Exploration"
+author: "Brady Sokora"
+format: html
+editor: visual
+---
+
+## What this file is for
+
+Before building the app I want to poke around the data and figure out what's actually worth showing. Everything in here is "static," meaning I'm picking the variables myself. Once I know which tables and plots are interesting, I'll make them interactive in the app.
+
+The data is the Melbourne Housing Snapshot from Kaggle. Each row is one property sale in Melbourne, Australia, with the price, the type of property, how it was sold, where it is, and a bunch of size details.
+
+## Setup
+
+All the reading and cleaning lives in `helpers.R` so the app and this file use the exact same steps.
+
+```{r}
+#| label: setup
+#| message: false
+
+library(tidyverse)
+source("helpers.R")
+
+housing <- read_melb_data()
+```
+
+## First look at the data
+
+```{r}
+#| label: glimpse
+
+glimpse(housing)
+```
+
+Checking where the missing values are so I know which variables to be careful with.
+
+```{r}
+#| label: missing-check
+
+housing |>
+  summarize(across(everything(), ~ sum(is.na(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "n_missing") |>
+  filter(n_missing > 0) |>
+  arrange(desc(n_missing))
+```
+
+Building area and year built are missing for a big chunk of sales, so I'll lean more on price, rooms, distance, and land size for the main plots.
+
+## One way contingency tables
+
+How many sales of each property type, sale method, and region.
+
+```{r}
+#| label: one-way-tables
+
+table(housing$type)
+table(housing$method)
+table(housing$region)
+table(housing$region_group)
+```
+
+## Two way contingency tables
+
+Property type by region group, and property type by how it was sold.
+
+```{r}
+#| label: two-way-tables
+
+table(housing$type, housing$region_group)
+table(housing$type, housing$method)
+```
+
+Same type by region table but as proportions within each region group, since the metro side has way more sales than regional.
+
+```{r}
+#| label: two-way-props
+
+table(housing$type, housing$region_group) |>
+  prop.table(margin = 2) |>
+  round(3)
+```
+
+## Numeric summaries across categories
+
+Using `summarize_num_by()` from `helpers.R`. This is the same function the app will call.
+
+Price by property type:
+
+```{r}
+#| label: price-by-type
+
+summarize_num_by(housing, "price", "type")
+```
+
+Price by region:
+
+```{r}
+#| label: price-by-region
+
+summarize_num_by(housing, "price", "region")
+```
+
+Distance from the CBD by property type, to see if units really are closer in:
+
+```{r}
+#| label: distance-by-type
+
+summarize_num_by(housing, "distance", "type")
+```
+
+Land size by sale method:
+
+```{r}
+#| label: land-by-method
+
+summarize_num_by(housing, "land_size", "method")
+```
+
+## Plots
+
+Coming in the next commit.
