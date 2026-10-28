@@ -16,9 +16,9 @@ library(tidyverse)
 # names, labeled factors, a real date column, and a couple of obviously bad
 # values set to NA.
 read_melb_data <- function(path = "data/melb_data.csv") {
-
+  
   raw <- readr::read_csv(path, show_col_types = FALSE)
-
+  
   raw |>
     # only keeping the columns I plan to use, and renaming them while I'm at it
     dplyr::select(
@@ -44,26 +44,37 @@ read_melb_data <- function(path = "data/melb_data.csv") {
       type = factor(type,
                     levels = c("h", "t", "u"),
                     labels = c("House", "Townhouse", "Unit")),
-
+      
       # same deal for how the property was sold
       method = factor(method,
                       levels = c("S", "SP", "PI", "VB", "SA"),
                       labels = c("Sold", "Sold Prior", "Passed In",
                                  "Vendor Bid", "Sold After Auction")),
-
+      
       region = factor(region),
-
+      
       # 8 regions is a lot for a sidebar, so I'm also making a 2 level version
       # (anything "Metropolitan" vs the outer Victoria regions)
       region_group = dplyr::if_else(
         stringr::str_detect(region, "Metropolitan"), "Metro", "Regional"
       ) |>
         factor(levels = c("Metro", "Regional")),
-
+      
       # dates are stored day/month/year in this file
       sale_date = lubridate::dmy(sale_date),
-      sale_year = lubridate::year(sale_date),
-
+      sale_year = factor(lubridate::year(sale_date)),
+      
+      # rooms as a grouped category too, so it can be used for coloring,
+      # faceting, and contingency tables (5+ rooms is rare so I lumped those)
+      rooms_group = dplyr::case_when(
+        rooms <= 1 ~ "1",
+        rooms == 2 ~ "2",
+        rooms == 3 ~ "3",
+        rooms == 4 ~ "4",
+        rooms >= 5 ~ "5+"
+      ) |>
+        factor(levels = c("1", "2", "3", "4", "5+")),
+      
       # a building area of 0 or a house built before 1800 are clearly entry
       # errors, so I'm setting those to NA instead of tossing the whole row
       building_area = dplyr::if_else(building_area <= 0, NA_real_, building_area),
@@ -79,10 +90,12 @@ read_melb_data <- function(path = "data/melb_data.csv") {
 # still uses the real column names behind the scenes.
 
 cat_vars <- c(
-  "Property Type" = "type",
-  "Sale Method"   = "method",
-  "Region"        = "region",
-  "Region Group"  = "region_group"
+  "Property Type"   = "type",
+  "Sale Method"     = "method",
+  "Region"          = "region",
+  "Region Group"    = "region_group",
+  "Rooms (grouped)" = "rooms_group",
+  "Sale Year"       = "sale_year"
 )
 
 num_vars <- c(
@@ -95,6 +108,14 @@ num_vars <- c(
   "Building Area (sq m)"   = "building_area",
   "Year Built"             = "year_built"
 )
+
+# var_label()
+# Turns a column name back into its nice label, e.g. "price" -> "Price (AUD)".
+# Handy for slider labels, axis titles, and table headers in the app.
+var_label <- function(var) {
+  all_vars <- c(cat_vars, num_vars)
+  names(all_vars)[match(var, all_vars)]
+}
 
 
 # Summary helpers --------------------------------------------------------
