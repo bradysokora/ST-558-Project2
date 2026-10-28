@@ -171,7 +171,70 @@ ui <- page_sidebar(
     
     nav_panel(
       title = "Data Exploration",
-      p("Summaries and plots coming soon.")
+      
+      # the big switch: categorical stuff or numeric stuff
+      radioButtons(
+        inputId  = "explore_type",
+        label    = "What do you want to explore?",
+        choices  = c("Categorical Summaries" = "cat",
+                     "Numeric Summaries"     = "num"),
+        selected = "cat",
+        inline   = TRUE
+      ),
+      hr(),
+      
+      # Categorical section ----------------------------------------------
+      conditionalPanel(
+        condition = "input.explore_type == 'cat'",
+        
+        layout_columns(
+          col_widths = c(3, 9),
+          
+          # left: controls for this section only (not in the sidebar on
+          # purpose, since these pick what to plot, not how to filter)
+          div(
+            selectInput(
+              inputId  = "cat_x",
+              label    = "Main Variable",
+              choices  = cat_vars,
+              selected = "type"
+            ),
+            selectInput(
+              inputId  = "cat_fill",
+              label    = "Second Variable (two-way table and bar color)",
+              choices  = c("None" = "none", cat_vars),
+              selected = "region_group"
+            ),
+            radioButtons(
+              inputId  = "bar_position",
+              label    = "Bar Style (when a second variable is picked)",
+              choices  = c("Side by Side" = "dodge",
+                           "Stacked"      = "stack",
+                           "Proportions"  = "fill"),
+              selected = "dodge"
+            ),
+            selectInput(
+              inputId  = "cat_facet",
+              label    = "Facet By",
+              choices  = c("None" = "none", cat_vars),
+              selected = "none"
+            )
+          ),
+          
+          # right: the table and the bar chart
+          div(
+            h5(textOutput("cat_table_title")),
+            tableOutput("cat_table"),
+            plotOutput("cat_bar", height = "450px")
+          )
+        )
+      ),
+      
+      # Numeric section --------------------------------------------------
+      conditionalPanel(
+        condition = "input.explore_type == 'num'",
+        p("Numeric summaries and plots coming next commit.")
+      )
     )
   )
 )
@@ -259,6 +322,71 @@ server <- function(input, output, session) {
       readr::write_csv(filtered_data(), file)
     }
   )
+  
+  
+  # Data Exploration: categorical ----------------------------------------
+  
+  # title above the table changes depending on one-way or two-way
+  output$cat_table_title <- renderText({
+    if (input$cat_fill == "none") {
+      paste("One-Way Table:", var_label(input$cat_x))
+    } else {
+      paste("Two-Way Table:", var_label(input$cat_x), "(rows) by",
+            var_label(input$cat_fill), "(columns)")
+    }
+  })
+  
+  # one-way table if no second variable, two-way table if there is one
+  output$cat_table <- renderTable({
+    df <- filtered_data()
+    
+    if (input$cat_fill == "none") {
+      tab <- as.data.frame(table(df[[input$cat_x]]))
+      names(tab) <- c(var_label(input$cat_x), "Count")
+    } else {
+      tab <- table(df[[input$cat_x]], df[[input$cat_fill]]) |>
+        as.data.frame.matrix() |>
+        tibble::rownames_to_column(var = var_label(input$cat_x))
+    }
+    
+    tab
+  }, striped = TRUE, digits = 0)
+  
+  # bar chart that adds color, bar style, and facets based on the controls
+  output$cat_bar <- renderPlot({
+    df <- filtered_data()
+    
+    p <- ggplot(df, aes(x = .data[[input$cat_x]]))
+    
+    if (input$cat_fill == "none") {
+      p <- p + geom_bar(fill = "steelblue")
+    } else {
+      p <- p +
+        geom_bar(aes(fill = .data[[input$cat_fill]]),
+                 position = input$bar_position) +
+        labs(fill = var_label(input$cat_fill))
+    }
+    
+    if (input$cat_facet != "none") {
+      p <- p + facet_wrap(vars(.data[[input$cat_facet]]))
+    }
+    
+    # proportions get a different y label than counts
+    y_lab <- if (input$cat_fill != "none" && input$bar_position == "fill") {
+      "Proportion of Sales"
+    } else {
+      "Number of Sales"
+    }
+    
+    p +
+      labs(
+        title = paste("Sales by", var_label(input$cat_x)),
+        x     = var_label(input$cat_x),
+        y     = y_lab
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  })
   
 }
 
