@@ -150,8 +150,23 @@ ui <- page_sidebar(
     
     nav_panel(
       title = "Data Download",
-      # quick check that the filtering works, the table comes next commit
-      textOutput("n_rows")
+      
+      p("This table shows the data after your sidebar filters are applied.",
+        "Change the filters and click Apply Filters to update it, then use",
+        "the button to save exactly what you see as a csv."),
+      
+      # row count so the user knows how much data survived the filters
+      textOutput("n_rows"),
+      br(),
+      
+      downloadButton(
+        outputId = "download_data",
+        label    = "Download Filtered Data (.csv)",
+        class    = "btn-success"
+      ),
+      br(), br(),
+      
+      DT::dataTableOutput("data_table")
     ),
     
     nav_panel(
@@ -225,6 +240,25 @@ server <- function(input, output, session) {
            " of ", format(nrow(housing), big.mark = ","),
            " sales match the current filters.")
   })
+  
+  # the table, scrollX keeps it from blowing out the page width
+  output$data_table <- DT::renderDataTable({
+    DT::datatable(
+      filtered_data(),
+      rownames = FALSE,
+      options  = list(pageLength = 10, scrollX = TRUE)
+    )
+  })
+  
+  # saves whatever is currently filtered, with today's date in the name
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste0("melbourne_housing_filtered_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      readr::write_csv(filtered_data(), file)
+    }
+  )
   
 }
 
