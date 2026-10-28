@@ -97,7 +97,55 @@ ui <- page_sidebar(
     
     nav_panel(
       title = "About",
-      p("About tab coming soon.")
+      
+      layout_columns(
+        col_widths = c(8, 4),
+        
+        # left side: what the app is and how to use it
+        div(
+          h3("What this app is for"),
+          p("This app lets you dig into property sales in Melbourne, Australia.",
+            "You can narrow the data down to the kinds of sales you care about,",
+            "look at the raw rows, download them, and make tables and plots to",
+            "see how things like price, size, and location relate to each other."),
+          
+          h4("The data"),
+          p("The data is the Melbourne Housing Snapshot from Kaggle. Each row is",
+            "one property sale from 2016 and 2017, with the sale price, property",
+            "type, how it was sold, the region, distance from the city center,",
+            "and size details like rooms, land size, and building area."),
+          p("More info and the original file: ",
+            a("Melbourne Housing Snapshot on Kaggle",
+              href   = "https://www.kaggle.com/datasets/dansbecker/melbourne-housing-snapshot",
+              target = "_blank")),
+          
+          h4("How to use it"),
+          tags$ul(
+            tags$li(strong("Sidebar: "),
+                    "pick which property types and region group to keep, choose",
+                    "up to two numeric variables, and set a range for each with",
+                    "the sliders. Nothing changes until you click",
+                    strong("Apply Filters"), "."),
+            tags$li(strong("About: "),
+                    "this page."),
+            tags$li(strong("Data Download: "),
+                    "see the filtered data in a table and save it as a csv."),
+            tags$li(strong("Data Exploration: "),
+                    "make contingency tables, numeric summaries, and plots from",
+                    "the filtered data, choosing which variables to use and how",
+                    "to color or facet them.")
+          )
+        ),
+        
+        # right side: picture
+        div(
+          tags$img(src = "melbourne.jpg",
+                   alt = "Melbourne city skyline",
+                   style = "width: 100%; border-radius: 8px;"),
+          p(em("Melbourne skyline. Photo by David Iliff, Wikimedia Commons (CC BY-SA)."),
+            style = "font-size: 0.85em; margin-top: 6px;")
+        )
+      )
     ),
     
     nav_panel(
