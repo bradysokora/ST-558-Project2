@@ -16,6 +16,9 @@ source("helpers.R")
 # read the data once when the app starts so every session shares it
 housing <- read_melb_data()
 
+
+# App helper functions ---------------------------------------------------
+
 # make_range_slider()
 # Builds a two handle slider for a numeric column, spanning its full range.
 # Both sliders use this, so the logic lives in one place.
@@ -29,6 +32,120 @@ make_range_slider <- function(input_id, var) {
     max     = ceiling(rng[2]),
     value   = c(floor(rng[1]), ceiling(rng[2]))
   )
+}
+
+# make_num_plot()
+# Builds whichever numeric plot the user picked. Keeping this out of the
+# server so renderPlot() is one line and each plot type is easy to find.
+#   plot_type: "hist", "box", "scatter", or "heat"
+#   num_var:   the numeric variable being plotted
+#   group_var: categorical x axis for box plots and heatmaps
+#   scatter_x: numeric x axis for scatter plots
+#   heat_y:    second categorical variable for heatmap rows
+#   color_var: categorical variable for color/fill, or "none"
+#   facet_var: categorical variable to facet by, or "none"
+#   log_scale: TRUE/FALSE, puts the numeric axis on a log scale
+make_num_plot <- function(df, plot_type, num_var, group_var, scatter_x,
+                          heat_y, color_var, facet_var, log_scale) {
+  
+  num_lab <- var_label(num_var)
+  
+  # heatmap is its own thing since it summarizes first, so handle it and
+  # return early (color and facet don't apply here)
+  if (plot_type == "heat") {
+    p <- df |>
+      dplyr::group_by(.data[[group_var]], .data[[heat_y]]) |>
+      dplyr::summarize(med = median(.data[[num_var]], na.rm = TRUE),
+                       .groups = "drop") |>
+      ggplot(aes(x = .data[[group_var]], y = .data[[heat_y]], fill = med)) +
+      geom_tile(color = "white") +
+      geom_text(aes(label = scales::comma(med, accuracy = 1)), size = 3.5) +
+      scale_fill_distiller(palette = "YlOrRd", direction = 1,
+                           labels = scales::label_comma()) +
+      labs(
+        title = paste("Median", num_lab, "by", var_label(group_var),
+                      "and", var_label(heat_y)),
+        x     = var_label(group_var),
+        y     = var_label(heat_y),
+        fill  = paste("Median", num_lab)
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1))
+    
+    return(p)
+  }
+  
+  has_color <- color_var != "none"
+  log_note  <- if (log_scale) " (log scale)" else ""
+  
+  # histogram: distribution of one numeric variable
+  if (plot_type == "hist") {
+    p <- ggplot(df, aes(x = .data[[num_var]]))
+    
+    p <- if (has_color) {
+      p + geom_histogram(aes(fill = .data[[color_var]]),
+                         bins = 40, color = "white")
+    } else {
+      p + geom_histogram(bins = 40, fill = "darkorange", color = "white")
+    }
+    
+    p <- p +
+      (if (log_scale) scale_x_log10(labels = scales::label_comma())
+       else scale_x_continuous(labels = scales::label_comma())) +
+      labs(title = paste("Distribution of", num_lab),
+           x = paste0(num_lab, log_note),
+           y = "Number of Sales")
+  }
+  
+  # box plot: numeric variable across levels of a categorical variable
+  if (plot_type == "box") {
+    p <- ggplot(df, aes(x = .data[[group_var]], y = .data[[num_var]]))
+    
+    p <- if (has_color) {
+      p + geom_boxplot(aes(fill = .data[[color_var]]), outlier.alpha = 0.2)
+    } else {
+      p + geom_boxplot(fill = "steelblue", alpha = 0.6, outlier.alpha = 0.2)
+    }
+    
+    p <- p +
+      (if (log_scale) scale_y_log10(labels = scales::label_comma())
+       else scale_y_continuous(labels = scales::label_comma())) +
+      labs(title = paste(num_lab, "by", var_label(group_var)),
+           x = var_label(group_var),
+           y = paste0(num_lab, log_note))
+  }
+  
+  # scatter plot: two numeric variables against each other
+  if (plot_type == "scatter") {
+    p <- ggplot(df, aes(x = .data[[scatter_x]], y = .data[[num_var]]))
+    
+    p <- if (has_color) {
+      p + geom_point(aes(color = .data[[color_var]]), alpha = 0.3, size = 1.2)
+    } else {
+      p + geom_point(color = "steelblue", alpha = 0.3, size = 1.2)
+    }
+    
+    p <- p +
+      scale_x_continuous(labels = scales::label_comma()) +
+      (if (log_scale) scale_y_log10(labels = scales::label_comma())
+       else scale_y_continuous(labels = scales::label_comma())) +
+      labs(title = paste(num_lab, "vs", var_label(scatter_x)),
+           x = var_label(scatter_x),
+           y = paste0(num_lab, log_note))
+  }
+  
+  # legend title, only matters if something is colored
+  if (has_color) {
+    p <- p + labs(fill = var_label(color_var), color = var_label(color_var))
+  }
+  
+  if (facet_var != "none") {
+    p <- p + facet_wrap(vars(.data[[facet_var]]))
+  }
+  
+  p +
+    theme_minimal(base_size = 14) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))
 }
 
 
@@ -233,7 +350,89 @@ ui <- page_sidebar(
       # Numeric section --------------------------------------------------
       conditionalPanel(
         condition = "input.explore_type == 'num'",
-        p("Numeric summaries and plots coming next commit.")
+        
+        layout_columns(
+          col_widths = c(3, 9),
+          
+          # left: controls for the numeric summaries and plots
+          div(
+            selectInput(
+              inputId  = "num_var",
+              label    = "Numeric Variable",
+              choices  = num_vars,
+              selected = "price"
+            ),
+            selectInput(
+              inputId  = "num_group",
+              label    = "Summarize Across",
+              choices  = cat_vars,
+              selected = "type"
+            ),
+            helpText("Summarize Across sets the groups in the table, and the",
+                     "x axis for box plots and heatmaps."),
+            
+            radioButtons(
+              inputId  = "plot_type",
+              label    = "Plot Type",
+              choices  = c("Histogram"          = "hist",
+                           "Box Plot"           = "box",
+                           "Scatter Plot"       = "scatter",
+                           "Heatmap of Medians" = "heat"),
+              selected = "box"
+            ),
+            
+            # only shows up for scatter plots
+            conditionalPanel(
+              condition = "input.plot_type == 'scatter'",
+              selectInput(
+                inputId  = "scatter_x",
+                label    = "X Axis Variable",
+                choices  = num_vars,
+                selected = "distance"
+              )
+            ),
+            
+            # only shows up for heatmaps
+            conditionalPanel(
+              condition = "input.plot_type == 'heat'",
+              selectInput(
+                inputId  = "heat_y",
+                label    = "Second Categorical Variable (heatmap rows)",
+                choices  = cat_vars,
+                selected = "region"
+              )
+            ),
+            
+            # color, facet, and log scale don't apply to the heatmap
+            conditionalPanel(
+              condition = "input.plot_type != 'heat'",
+              selectInput(
+                inputId  = "num_color",
+                label    = "Color By",
+                choices  = c("None" = "none", cat_vars),
+                selected = "none"
+              ),
+              selectInput(
+                inputId  = "num_facet",
+                label    = "Facet By",
+                choices  = c("None" = "none", cat_vars),
+                selected = "none"
+              ),
+              checkboxInput(
+                inputId = "log_scale",
+                label   = "Log scale for the numeric axis (helps with price)",
+                value   = TRUE
+              )
+            )
+          ),
+          
+          # right: the summary table and the plot
+          div(
+            h5(textOutput("num_table_title")),
+            tableOutput("num_table"),
+            plotOutput("num_plot", height = "500px")
+          )
+        )
       )
     )
   )
@@ -386,6 +585,41 @@ server <- function(input, output, session) {
       ) +
       theme_minimal(base_size = 14) +
       theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  })
+  
+  
+  # Data Exploration: numeric --------------------------------------------
+  
+  output$num_table_title <- renderText({
+    paste("Summary of", var_label(input$num_var), "by",
+          var_label(input$num_group))
+  })
+  
+  # uses summarize_num_by() from helpers.R, then formats the numbers with
+  # commas so prices are readable
+  output$num_table <- renderTable({
+    summarize_num_by(filtered_data(), input$num_var, input$num_group) |>
+      dplyr::mutate(
+        n = scales::comma(n),
+        dplyr::across(mean:max, ~ scales::comma(.x, accuracy = 0.1))
+      ) |>
+      setNames(c(var_label(input$num_group),
+                 "N", "Mean", "Median", "SD", "Min", "Max"))
+  }, striped = TRUE)
+  
+  # all the plot logic lives in make_num_plot() up top
+  output$num_plot <- renderPlot({
+    make_num_plot(
+      df        = filtered_data(),
+      plot_type = input$plot_type,
+      num_var   = input$num_var,
+      group_var = input$num_group,
+      scatter_x = input$scatter_x,
+      heat_y    = input$heat_y,
+      color_var = input$num_color,
+      facet_var = input$num_facet,
+      log_scale = input$log_scale
+    )
   })
   
 }
