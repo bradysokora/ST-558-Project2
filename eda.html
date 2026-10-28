@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Brady Sokora">
+
+<title>Melbourne Housing: Static Exploration</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="eda_files/libs/clipboard/clipboard.min.js"></script>
+<script src="eda_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="eda_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="eda_files/libs/quarto-html/popper.min.js"></script>
+<script src="eda_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="eda_files/libs/quarto-html/anchor.min.js"></script>
+<link href="eda_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="eda_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="eda_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="eda_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="eda_files/libs/bootstrap/bootstrap-138a6193a3bd40baf1e627da441a4734.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Melbourne Housing: Static Exploration</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Brady Sokora </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-this-file-is-for" class="level2">
+<h2 class="anchored" data-anchor-id="what-this-file-is-for">What this file is for</h2>
+<p>Before building the app I want to poke around the data and figure out what’s actually worth showing. Everything in here is “static,” meaning I’m picking the variables myself. Once I know which tables and plots are interesting, I’ll make them interactive in the app.</p>
+<p>The data is the Melbourne Housing Snapshot from Kaggle. Each row is one property sale in Melbourne, Australia, with the price, the type of property, how it was sold, where it is, and a bunch of size details.</p>
+</section>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<p>All the reading and cleaning lives in <code>helpers.R</code> so the app and this file use the exact same steps.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"helpers.R"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>housing <span class="ot">&lt;-</span> <span class="fu">read_melb_data</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="first-look-at-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="first-look-at-the-data">First look at the data</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(housing)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 13,580
+Columns: 19
+$ suburb        &lt;chr&gt; "Abbotsford", "Abbotsford", "Abbotsford", "Abbotsford", …
+$ rooms         &lt;dbl&gt; 2, 2, 3, 3, 4, 2, 3, 2, 1, 2, 2, 3, 2, 2, 1, 2, 3, 3, 3,…
+$ type          &lt;fct&gt; House, House, House, House, House, House, House, House, …
+$ price         &lt;dbl&gt; 1480000, 1035000, 1465000, 850000, 1600000, 941000, 1876…
+$ method        &lt;fct&gt; Sold, Sold, Sold Prior, Passed In, Vendor Bid, Sold, Sol…
+$ sale_date     &lt;date&gt; 2016-12-03, 2016-02-04, 2017-03-04, 2017-03-04, 2016-06…
+$ distance      &lt;dbl&gt; 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2…
+$ bathrooms     &lt;dbl&gt; 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 1, 1,…
+$ car_spots     &lt;dbl&gt; 1, 0, 0, 1, 2, 0, 0, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 0,…
+$ land_size     &lt;dbl&gt; 202, 156, 134, 94, 120, 181, 245, 256, 0, 220, 0, 214, 0…
+$ building_area &lt;dbl&gt; NA, 79, 150, NA, 142, NA, 210, 107, NA, 75, NA, 190, 94,…
+$ year_built    &lt;dbl&gt; NA, 1900, 1900, NA, 2014, NA, 1910, 1890, NA, 1900, NA, …
+$ council       &lt;chr&gt; "Yarra", "Yarra", "Yarra", "Yarra", "Yarra", "Yarra", "Y…
+$ region        &lt;fct&gt; Northern Metropolitan, Northern Metropolitan, Northern M…
+$ latitude      &lt;dbl&gt; -37.7996, -37.8079, -37.8093, -37.7969, -37.8072, -37.80…
+$ longitude     &lt;dbl&gt; 144.9984, 144.9934, 144.9944, 144.9969, 144.9941, 144.99…
+$ region_group  &lt;fct&gt; Metro, Metro, Metro, Metro, Metro, Metro, Metro, Metro, …
+$ sale_year     &lt;fct&gt; 2016, 2016, 2017, 2017, 2016, 2016, 2016, 2016, 2016, 20…
+$ rooms_group   &lt;fct&gt; 2, 2, 3, 3, 4, 2, 3, 2, 1, 2, 2, 3, 2, 2, 1, 2, 3, 3, 3,…</code></pre>
+</div>
+</div>
+<p>Checking where the missing values are so I know which variables to be careful with.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="fu">across</span>(<span class="fu">everything</span>(), <span class="sc">~</span> <span class="fu">sum</span>(<span class="fu">is.na</span>(.x)))) <span class="sc">|&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"variable"</span>, <span class="at">values_to =</span> <span class="st">"n_missing"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(n_missing <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n_missing))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 2
+  variable      n_missing
+  &lt;chr&gt;             &lt;int&gt;
+1 building_area      6467
+2 year_built         5376
+3 council            1369
+4 car_spots            62</code></pre>
+</div>
+</div>
+<p>Building area is missing for about 6,500 sales and year built for about 5,400, which is close to half the data. So I’ll lean more on price, rooms, distance, and land size for the main plots.</p>
+</section>
+<section id="one-way-contingency-tables" class="level2">
+<h2 class="anchored" data-anchor-id="one-way-contingency-tables">One way contingency tables</h2>
+<p>How many sales of each property type, sale method, region, and number of rooms. I’m using <code>knitr::kable()</code> for every table so they’re easier to read than raw console output.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(type) <span class="sc">|&gt;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Property Type"</span>, <span class="st">"Number of Sales"</span>),</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sales by Property Type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sales by Property Type</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Property Type</th>
+<th style="text-align: right;">Number of Sales</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">9449</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">1114</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">3017</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(method) <span class="sc">|&gt;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Sale Method"</span>, <span class="st">"Number of Sales"</span>),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sales by Sale Method"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sales by Sale Method</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Sale Method</th>
+<th style="text-align: right;">Number of Sales</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sold</td>
+<td style="text-align: right;">9022</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sold Prior</td>
+<td style="text-align: right;">1703</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Passed In</td>
+<td style="text-align: right;">1564</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vendor Bid</td>
+<td style="text-align: right;">1199</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sold After Auction</td>
+<td style="text-align: right;">92</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(region) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Region"</span>, <span class="st">"Number of Sales"</span>),</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sales by Region"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sales by Region</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Region</th>
+<th style="text-align: right;">Number of Sales</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Eastern Metropolitan</td>
+<td style="text-align: right;">1471</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Eastern Victoria</td>
+<td style="text-align: right;">53</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Northern Metropolitan</td>
+<td style="text-align: right;">3890</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Northern Victoria</td>
+<td style="text-align: right;">41</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">South-Eastern Metropolitan</td>
+<td style="text-align: right;">450</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Southern Metropolitan</td>
+<td style="text-align: right;">4695</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Western Metropolitan</td>
+<td style="text-align: right;">2948</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Western Victoria</td>
+<td style="text-align: right;">32</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(rooms_group) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Rooms"</span>, <span class="st">"Number of Sales"</span>),</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sales by Number of Rooms"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sales by Number of Rooms</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Rooms</th>
+<th style="text-align: right;">Number of Sales</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">681</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2</td>
+<td style="text-align: right;">3648</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">5881</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">4</td>
+<td style="text-align: right;">2688</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">5+</td>
+<td style="text-align: right;">682</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="two-way-contingency-tables" class="level2">
+<h2 class="anchored" data-anchor-id="two-way-contingency-tables">Two way contingency tables</h2>
+<p>Property type by region group, and property type by how it was sold.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(housing<span class="sc">$</span>type, housing<span class="sc">$</span>region_group) <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Property Type (rows) by Region Group (columns)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Property Type (rows) by Region Group (columns)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">Metro</th>
+<th style="text-align: right;">Regional</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">9326</td>
+<td style="text-align: right;">123</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">1114</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">3014</td>
+<td style="text-align: right;">3</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(housing<span class="sc">$</span>type, housing<span class="sc">$</span>method) <span class="sc">|&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Property Type (rows) by Sale Method (columns)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Property Type (rows) by Sale Method (columns)</caption>
+<colgroup>
+<col style="width: 15%">
+<col style="width: 7%">
+<col style="width: 16%">
+<col style="width: 15%">
+<col style="width: 16%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">Sold</th>
+<th style="text-align: right;">Sold Prior</th>
+<th style="text-align: right;">Passed In</th>
+<th style="text-align: right;">Vendor Bid</th>
+<th style="text-align: right;">Sold After Auction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">6507</td>
+<td style="text-align: right;">1079</td>
+<td style="text-align: right;">1069</td>
+<td style="text-align: right;">728</td>
+<td style="text-align: right;">66</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">723</td>
+<td style="text-align: right;">143</td>
+<td style="text-align: right;">134</td>
+<td style="text-align: right;">107</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">1792</td>
+<td style="text-align: right;">481</td>
+<td style="text-align: right;">361</td>
+<td style="text-align: right;">364</td>
+<td style="text-align: right;">19</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Same type by region table but as proportions within each region group, since the metro side has way more sales than regional.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(housing<span class="sc">$</span>type, housing<span class="sc">$</span>region_group) <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prop.table</span>(<span class="at">margin =</span> <span class="dv">2</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">3</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Proportion of Each Property Type Within Region Group"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Proportion of Each Property Type Within Region Group</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">Metro</th>
+<th style="text-align: right;">Regional</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">0.693</td>
+<td style="text-align: right;">0.976</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">0.083</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">0.224</td>
+<td style="text-align: right;">0.024</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="numeric-summaries-across-categories" class="level2">
+<h2 class="anchored" data-anchor-id="numeric-summaries-across-categories">Numeric summaries across categories</h2>
+<p>Using <code>summarize_num_by()</code> from <code>helpers.R</code>. This is the same function the app will call. Commas on the big numbers so the prices are readable.</p>
+<p>Price by property type:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summarize_num_by</span>(housing, <span class="st">"price"</span>, <span class="st">"type"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">0</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sale Price (AUD) by Property Type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sale Price (AUD) by Property Type</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">type</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">min</th>
+<th style="text-align: right;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">9,449</td>
+<td style="text-align: right;">1,242,665</td>
+<td style="text-align: right;">1,080,000</td>
+<td style="text-align: right;">668,079</td>
+<td style="text-align: right;">131,000</td>
+<td style="text-align: right;">9,000,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">1,114</td>
+<td style="text-align: right;">933,735</td>
+<td style="text-align: right;">846,750</td>
+<td style="text-align: right;">395,038</td>
+<td style="text-align: right;">300,000</td>
+<td style="text-align: right;">3,475,000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">3,017</td>
+<td style="text-align: right;">605,127</td>
+<td style="text-align: right;">560,000</td>
+<td style="text-align: right;">260,987</td>
+<td style="text-align: right;">85,000</td>
+<td style="text-align: right;">3,625,000</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Price by region:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summarize_num_by</span>(housing, <span class="st">"price"</span>, <span class="st">"region"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">0</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Sale Price (AUD) by Region"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Sale Price (AUD) by Region</caption>
+<colgroup>
+<col style="width: 34%">
+<col style="width: 7%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 10%">
+<col style="width: 10%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">region</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">min</th>
+<th style="text-align: right;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Eastern Metropolitan</td>
+<td style="text-align: right;">1,471</td>
+<td style="text-align: right;">1,104,080</td>
+<td style="text-align: right;">1,010,000</td>
+<td style="text-align: right;">467,418</td>
+<td style="text-align: right;">288,000</td>
+<td style="text-align: right;">4,000,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Eastern Victoria</td>
+<td style="text-align: right;">53</td>
+<td style="text-align: right;">699,981</td>
+<td style="text-align: right;">670,000</td>
+<td style="text-align: right;">165,498</td>
+<td style="text-align: right;">400,000</td>
+<td style="text-align: right;">1,085,000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Northern Metropolitan</td>
+<td style="text-align: right;">3,890</td>
+<td style="text-align: right;">898,171</td>
+<td style="text-align: right;">806,250</td>
+<td style="text-align: right;">443,968</td>
+<td style="text-align: right;">145,000</td>
+<td style="text-align: right;">4,525,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Northern Victoria</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">594,829</td>
+<td style="text-align: right;">540,000</td>
+<td style="text-align: right;">217,762</td>
+<td style="text-align: right;">330,000</td>
+<td style="text-align: right;">1,355,000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">South-Eastern Metropolitan</td>
+<td style="text-align: right;">450</td>
+<td style="text-align: right;">922,944</td>
+<td style="text-align: right;">850,000</td>
+<td style="text-align: right;">506,525</td>
+<td style="text-align: right;">266,000</td>
+<td style="text-align: right;">9,000,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Southern Metropolitan</td>
+<td style="text-align: right;">4,695</td>
+<td style="text-align: right;">1,372,963</td>
+<td style="text-align: right;">1,250,000</td>
+<td style="text-align: right;">822,529</td>
+<td style="text-align: right;">131,000</td>
+<td style="text-align: right;">8,000,000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Western Metropolitan</td>
+<td style="text-align: right;">2,948</td>
+<td style="text-align: right;">866,421</td>
+<td style="text-align: right;">793,000</td>
+<td style="text-align: right;">394,145</td>
+<td style="text-align: right;">85,000</td>
+<td style="text-align: right;">3,900,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Western Victoria</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">397,523</td>
+<td style="text-align: right;">400,000</td>
+<td style="text-align: right;">86,212</td>
+<td style="text-align: right;">280,500</td>
+<td style="text-align: right;">710,000</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Distance from the CBD by property type, to see if units really are closer in:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summarize_num_by</span>(housing, <span class="st">"distance"</span>, <span class="st">"type"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">1</span>,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Distance from CBD (km) by Property Type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Distance from CBD (km) by Property Type</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">type</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">min</th>
+<th style="text-align: right;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">House</td>
+<td style="text-align: right;">9449</td>
+<td style="text-align: right;">11.0</td>
+<td style="text-align: right;">10.4</td>
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">48.1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Townhouse</td>
+<td style="text-align: right;">1114</td>
+<td style="text-align: right;">9.9</td>
+<td style="text-align: right;">9.9</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">35.4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unit</td>
+<td style="text-align: right;">3017</td>
+<td style="text-align: right;">7.6</td>
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">41.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Land size by sale method:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summarize_num_by</span>(housing, <span class="st">"land_size"</span>, <span class="st">"method"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">0</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption =</span> <span class="st">"Land Size (sq m) by Sale Method"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Land Size (sq m) by Sale Method</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">method</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">min</th>
+<th style="text-align: right;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sold</td>
+<td style="text-align: right;">9,022</td>
+<td style="text-align: right;">531</td>
+<td style="text-align: right;">458</td>
+<td style="text-align: right;">1,512</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">76,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sold Prior</td>
+<td style="text-align: right;">1,703</td>
+<td style="text-align: right;">469</td>
+<td style="text-align: right;">371</td>
+<td style="text-align: right;">635</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">9,838</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Passed In</td>
+<td style="text-align: right;">1,564</td>
+<td style="text-align: right;">522</td>
+<td style="text-align: right;">430</td>
+<td style="text-align: right;">833</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">14,500</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vendor Bid</td>
+<td style="text-align: right;">1,199</td>
+<td style="text-align: right;">927</td>
+<td style="text-align: right;">338</td>
+<td style="text-align: right;">12,708</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">433,014</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sold After Auction</td>
+<td style="text-align: right;">92</td>
+<td style="text-align: right;">700</td>
+<td style="text-align: right;">599</td>
+<td style="text-align: right;">1,516</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">14,294</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="plots" class="level2">
+<h2 class="anchored" data-anchor-id="plots">Plots</h2>
+<p>Price is really right skewed (a handful of sales are way up in the millions), so for most of the price plots I’m using a log scale so the bulk of the data doesn’t get squished into one corner. I’m also using <code>scales::label_dollar()</code> so the axes read like actual prices.</p>
+<section id="bar-chart-sales-by-property-type" class="level3">
+<h3 class="anchored" data-anchor-id="bar-chart-sales-by-property-type">1. Bar chart: sales by property type</h3>
+<p>Simple starting point. Houses make up most of the sales, about 9,400 out of 13,580.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> type)) <span class="sc">+</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">fill =</span> <span class="st">"steelblue"</span>) <span class="sc">+</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Number of Sales by Property Type"</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Property Type"</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Number of Sales"</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-bar-type-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="side-by-side-bar-chart-property-type-by-region-group" class="level3">
+<h3 class="anchored" data-anchor-id="side-by-side-bar-chart-property-type-by-region-group">2. Side by side bar chart: property type by region group</h3>
+<p>This one is multivariate since the fill shows property type within each region group. Almost every sale is in Metro, and Regional only has 126 sales total. Of those, about 98% are houses, which makes sense since there’s more space out there.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> region_group, <span class="at">fill =</span> type)) <span class="sc">+</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Property Type Sales in Metro vs Regional Melbourne"</span>,</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Region Group"</span>,</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Number of Sales"</span>,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Property Type"</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-side-by-side-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="faceted-histogram-price-by-property-type" class="level3">
+<h3 class="anchored" data-anchor-id="faceted-histogram-price-by-property-type">3. Faceted histogram: price by property type</h3>
+<p>My faceted plot. Splitting the price histogram out by type shows units sit way lower than houses, with townhouses somewhere in the middle.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> price)) <span class="sc">+</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"darkorange"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_log10</span>(<span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>()) <span class="sc">+</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> type, <span class="at">ncol =</span> <span class="dv">1</span>, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Distribution of Sale Price by Property Type"</span>,</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Sale Price (AUD, log scale)"</span>,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Number of Sales"</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-hist-facet-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="box-plot-price-by-region-colored-by-property-type" class="level3">
+<h3 class="anchored" data-anchor-id="box-plot-price-by-region-colored-by-property-type">4. Box plot: price by region, colored by property type</h3>
+<p>Multivariate again. Southern Metro has the priciest houses and townhouses, but for units Eastern Metro actually edges it out a little. Houses are the cheapest out in the Victoria regions, though those regions only have a few dozen sales each. I flipped the axes because the region names are long.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> region, <span class="at">y =</span> price, <span class="at">fill =</span> type)) <span class="sc">+</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">outlier.alpha =</span> <span class="fl">0.2</span>) <span class="sc">+</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>(<span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>()) <span class="sc">+</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Sale Price by Region and Property Type"</span>,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Region"</span>,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Sale Price (AUD, log scale)"</span>,</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Property Type"</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-box-region-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="scatter-plot-price-vs-distance-from-the-cbd" class="level3">
+<h3 class="anchored" data-anchor-id="scatter-plot-price-vs-distance-from-the-cbd">5. Scatter plot: price vs distance from the CBD</h3>
+<p>Colored by property type. Houses and townhouses get cheaper over the first 15 km or so from the city center, but units stay pretty flat the whole way out. Houses even tick back up a bit past 35 km, probably because those are bigger properties on more land. There’s a lot of spread at every distance either way.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> distance, <span class="at">y =</span> price, <span class="at">color =</span> type)) <span class="sc">+</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.3</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"loess"</span>, <span class="at">se =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>(<span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>()) <span class="sc">+</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Sale Price vs Distance from the CBD"</span>,</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Distance from CBD (km)"</span>,</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Sale Price (AUD, log scale)"</span>,</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Property Type"</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-scatter-distance-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="heatmap-median-price-by-region-and-property-type" class="level3">
+<h3 class="anchored" data-anchor-id="heatmap-median-price-by-region-and-property-type">6. Heatmap: median price by region and property type</h3>
+<p>This is my plot we didn’t cover in class. I’m summarizing first to get the median price for every region and type combo, then using <code>geom_tile()</code> to color each cell. Southern Metro houses jump right out at about $1.65M. The blank tiles are combos with no sales at all, like townhouses in the outer Victoria regions.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>housing <span class="sc">|&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(region, type) <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">median_price =</span> <span class="fu">median</span>(price), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> type, <span class="at">y =</span> region, <span class="at">fill =</span> median_price)) <span class="sc">+</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>(<span class="at">scale =</span> <span class="fl">1e-3</span>, <span class="at">suffix =</span> <span class="st">"K"</span>,</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>                                             <span class="at">accuracy =</span> <span class="dv">1</span>)(median_price)),</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>()) <span class="sc">+</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Median Sale Price by Region and Property Type"</span>,</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Property Type"</span>,</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Region"</span>,</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Median Price (AUD)"</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-heatmap-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="map-style-scatter-where-the-sales-are" class="level3">
+<h3 class="anchored" data-anchor-id="map-style-scatter-where-the-sales-are">7. Map style scatter: where the sales are</h3>
+<p>Bonus plot using the latitude and longitude, colored by price. You can basically see the shape of Melbourne, and the brightest (most expensive) points sit just east and southeast of the city center.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(housing, <span class="fu">aes</span>(<span class="at">x =</span> longitude, <span class="at">y =</span> latitude, <span class="at">color =</span> price)) <span class="sc">+</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_viridis_c</span>(<span class="at">trans =</span> <span class="st">"log10"</span>, <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_dollar</span>()) <span class="sc">+</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_quickmap</span>() <span class="sc">+</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Location of Sales Colored by Price"</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Longitude"</span>,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Latitude"</span>,</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Sale Price (AUD)"</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="eda_files/figure-html/plot-map-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="takeaways-for-the-app" class="level2">
+<h2 class="anchored" data-anchor-id="takeaways-for-the-app">Takeaways for the app</h2>
+<ul>
+<li>Property type and region group work well as the two sidebar subsetting variables since they each have a small number of levels. Regional is pretty small though (126 sales), so filtering to it will leave a thin dataset.</li>
+<li>Price and distance are the most interesting numeric variables to slide on.</li>
+<li>The box plot, scatter plot, and heatmap tell the clearest stories, so those are the ones I want to make interactive.</li>
+</ul>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

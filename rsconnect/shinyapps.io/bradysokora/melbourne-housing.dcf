@@ -1,0 +1,13 @@
+name: melbourne-housing
+title: melbourne-housing
+username: bradysokora
+account: bradysokora
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 18308485
+bundleId: 12752706
+url: https://bradysokora.shinyapps.io/melbourne-housing/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: eda.qmd

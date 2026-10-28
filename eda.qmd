@@ -45,19 +45,34 @@ housing |>
   arrange(desc(n_missing))
 ```
 
-Building area and year built are missing for a big chunk of sales, so I'll lean more on price, rooms, distance, and land size for the main plots.
+Building area is missing for about 6,500 sales and year built for about 5,400, which is close to half the data. So I'll lean more on price, rooms, distance, and land size for the main plots.
 
 ## One way contingency tables
 
-How many sales of each property type, sale method, and region.
+How many sales of each property type, sale method, region, and number of rooms. I'm using `knitr::kable()` for every table so they're easier to read than raw console output.
 
 ```{r}
 #| label: one-way-tables
 
-table(housing$type)
-table(housing$method)
-table(housing$region)
-table(housing$region_group)
+housing |>
+  count(type) |>
+  knitr::kable(col.names = c("Property Type", "Number of Sales"),
+               caption = "Sales by Property Type")
+
+housing |>
+  count(method) |>
+  knitr::kable(col.names = c("Sale Method", "Number of Sales"),
+               caption = "Sales by Sale Method")
+
+housing |>
+  count(region) |>
+  knitr::kable(col.names = c("Region", "Number of Sales"),
+               caption = "Sales by Region")
+
+housing |>
+  count(rooms_group) |>
+  knitr::kable(col.names = c("Rooms", "Number of Sales"),
+               caption = "Sales by Number of Rooms")
 ```
 
 ## Two way contingency tables
@@ -67,8 +82,11 @@ Property type by region group, and property type by how it was sold.
 ```{r}
 #| label: two-way-tables
 
-table(housing$type, housing$region_group)
-table(housing$type, housing$method)
+table(housing$type, housing$region_group) |>
+  knitr::kable(caption = "Property Type (rows) by Region Group (columns)")
+
+table(housing$type, housing$method) |>
+  knitr::kable(caption = "Property Type (rows) by Sale Method (columns)")
 ```
 
 Same type by region table but as proportions within each region group, since the metro side has way more sales than regional.
@@ -78,19 +96,22 @@ Same type by region table but as proportions within each region group, since the
 
 table(housing$type, housing$region_group) |>
   prop.table(margin = 2) |>
-  round(3)
+  knitr::kable(digits = 3,
+               caption = "Proportion of Each Property Type Within Region Group")
 ```
 
 ## Numeric summaries across categories
 
-Using `summarize_num_by()` from `helpers.R`. This is the same function the app will call.
+Using `summarize_num_by()` from `helpers.R`. This is the same function the app will call. Commas on the big numbers so the prices are readable.
 
 Price by property type:
 
 ```{r}
 #| label: price-by-type
 
-summarize_num_by(housing, "price", "type")
+summarize_num_by(housing, "price", "type") |>
+  knitr::kable(digits = 0, format.args = list(big.mark = ","),
+               caption = "Sale Price (AUD) by Property Type")
 ```
 
 Price by region:
@@ -98,7 +119,9 @@ Price by region:
 ```{r}
 #| label: price-by-region
 
-summarize_num_by(housing, "price", "region")
+summarize_num_by(housing, "price", "region") |>
+  knitr::kable(digits = 0, format.args = list(big.mark = ","),
+               caption = "Sale Price (AUD) by Region")
 ```
 
 Distance from the CBD by property type, to see if units really are closer in:
@@ -106,7 +129,9 @@ Distance from the CBD by property type, to see if units really are closer in:
 ```{r}
 #| label: distance-by-type
 
-summarize_num_by(housing, "distance", "type")
+summarize_num_by(housing, "distance", "type") |>
+  knitr::kable(digits = 1,
+               caption = "Distance from CBD (km) by Property Type")
 ```
 
 Land size by sale method:
@@ -114,9 +139,157 @@ Land size by sale method:
 ```{r}
 #| label: land-by-method
 
-summarize_num_by(housing, "land_size", "method")
+summarize_num_by(housing, "land_size", "method") |>
+  knitr::kable(digits = 0, format.args = list(big.mark = ","),
+               caption = "Land Size (sq m) by Sale Method")
 ```
 
 ## Plots
 
-Coming in the next commit.
+Price is really right skewed (a handful of sales are way up in the millions), so for most of the price plots I'm using a log scale so the bulk of the data doesn't get squished into one corner. I'm also using `scales::label_dollar()` so the axes read like actual prices.
+
+### 1. Bar chart: sales by property type
+
+Simple starting point. Houses make up most of the sales, about 9,400 out of 13,580.
+
+```{r}
+#| label: plot-bar-type
+
+ggplot(housing, aes(x = type)) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = "Number of Sales by Property Type",
+    x = "Property Type",
+    y = "Number of Sales"
+  ) +
+  theme_minimal()
+```
+
+### 2. Side by side bar chart: property type by region group
+
+This one is multivariate since the fill shows property type within each region group. Almost every sale is in Metro, and Regional only has 126 sales total. Of those, about 98% are houses, which makes sense since there's more space out there.
+
+```{r}
+#| label: plot-side-by-side
+
+ggplot(housing, aes(x = region_group, fill = type)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Property Type Sales in Metro vs Regional Melbourne",
+    x = "Region Group",
+    y = "Number of Sales",
+    fill = "Property Type"
+  ) +
+  theme_minimal()
+```
+
+### 3. Faceted histogram: price by property type
+
+My faceted plot. Splitting the price histogram out by type shows units sit way lower than houses, with townhouses somewhere in the middle.
+
+```{r}
+#| label: plot-hist-facet
+
+ggplot(housing, aes(x = price)) +
+  geom_histogram(bins = 40, fill = "darkorange", color = "white") +
+  scale_x_log10(labels = scales::label_dollar()) +
+  facet_wrap(~ type, ncol = 1, scales = "free_y") +
+  labs(
+    title = "Distribution of Sale Price by Property Type",
+    x = "Sale Price (AUD, log scale)",
+    y = "Number of Sales"
+  ) +
+  theme_minimal()
+```
+
+### 4. Box plot: price by region, colored by property type
+
+Multivariate again. Southern Metro has the priciest houses and townhouses, but for units Eastern Metro actually edges it out a little. Houses are the cheapest out in the Victoria regions, though those regions only have a few dozen sales each. I flipped the axes because the region names are long.
+
+```{r}
+#| label: plot-box-region
+
+ggplot(housing, aes(x = region, y = price, fill = type)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  scale_y_log10(labels = scales::label_dollar()) +
+  coord_flip() +
+  labs(
+    title = "Sale Price by Region and Property Type",
+    x = "Region",
+    y = "Sale Price (AUD, log scale)",
+    fill = "Property Type"
+  ) +
+  theme_minimal()
+```
+
+### 5. Scatter plot: price vs distance from the CBD
+
+Colored by property type. Houses and townhouses get cheaper over the first 15 km or so from the city center, but units stay pretty flat the whole way out. Houses even tick back up a bit past 35 km, probably because those are bigger properties on more land. There's a lot of spread at every distance either way.
+
+```{r}
+#| label: plot-scatter-distance
+#| message: false
+
+ggplot(housing, aes(x = distance, y = price, color = type)) +
+  geom_point(alpha = 0.3, size = 1) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_log10(labels = scales::label_dollar()) +
+  labs(
+    title = "Sale Price vs Distance from the CBD",
+    x = "Distance from CBD (km)",
+    y = "Sale Price (AUD, log scale)",
+    color = "Property Type"
+  ) +
+  theme_minimal()
+```
+
+### 6. Heatmap: median price by region and property type
+
+This is my plot we didn't cover in class. I'm summarizing first to get the median price for every region and type combo, then using `geom_tile()` to color each cell. Southern Metro houses jump right out at about $1.65M. The blank tiles are combos with no sales at all, like townhouses in the outer Victoria regions.
+
+```{r}
+#| label: plot-heatmap
+
+housing |>
+  group_by(region, type) |>
+  summarize(median_price = median(price), .groups = "drop") |>
+  ggplot(aes(x = type, y = region, fill = median_price)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = scales::label_dollar(scale = 1e-3, suffix = "K",
+                                             accuracy = 1)(median_price)),
+            size = 3) +
+  scale_fill_viridis_c(labels = scales::label_dollar()) +
+  labs(
+    title = "Median Sale Price by Region and Property Type",
+    x = "Property Type",
+    y = "Region",
+    fill = "Median Price (AUD)"
+  ) +
+  theme_minimal()
+```
+
+### 7. Map style scatter: where the sales are
+
+Bonus plot using the latitude and longitude, colored by price. You can basically see the shape of Melbourne, and the brightest (most expensive) points sit just east and southeast of the city center.
+
+```{r}
+#| label: plot-map
+
+ggplot(housing, aes(x = longitude, y = latitude, color = price)) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  scale_color_viridis_c(trans = "log10", labels = scales::label_dollar()) +
+  coord_quickmap() +
+  labs(
+    title = "Location of Sales Colored by Price",
+    x = "Longitude",
+    y = "Latitude",
+    color = "Sale Price (AUD)"
+  ) +
+  theme_minimal()
+```
+
+## Takeaways for the app
+
+- Property type and region group work well as the two sidebar subsetting variables since they each have a small number of levels. Regional is pretty small though (126 sales), so filtering to it will leave a thin dataset.
+- Price and distance are the most interesting numeric variables to slide on.
+- The box plot, scatter plot, and heatmap tell the clearest stories, so those are the ones I want to make interactive.
